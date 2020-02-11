@@ -376,9 +376,15 @@ aditof::Status LocalDevice::setFrameType(const aditof::FrameDetails &details) {
             return Status::GENERIC_ERROR;
         }
 
-        m_implData->videoBuffers[m_implData->nVideoBuffers].length = length;
-	LOG(INFO) << "Buffer: " << m_implData->nVideoBuffers << " addr: "
-		<< static_cast<void *>(m_implData->videoBuffers[m_implData->nVideoBuffers].start) << "\n";
+	int j = m_implData->nVideoBuffers;
+
+        m_implData->videoBuffers[j].length = length;
+	LOG(INFO) << "Buffer: " << j << " addr: "
+		<< static_cast<void *>(m_implData->videoBuffers[j].start) << "\n";
+	if (j > 0) {
+		LOG(INFO) << "mem diff with prev buffer: " << (long long)m_implData->videoBuffers[j].start - (long long)m_implData->videoBuffers[j - 1].start;
+	}
+
     }
 
     m_implData->frameDetails = details;
