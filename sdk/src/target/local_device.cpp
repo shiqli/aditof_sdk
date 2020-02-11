@@ -377,6 +377,8 @@ aditof::Status LocalDevice::setFrameType(const aditof::FrameDetails &details) {
         }
 
         m_implData->videoBuffers[m_implData->nVideoBuffers].length = length;
+	LOG(INFO) << "Buffer: " << m_implData->nVideoBuffers << " addr: "
+		<< static_cast<void *>(m_implData->videoBuffers[m_implData->nVideoBuffers].start) << "\n";
     }
 
     m_implData->frameDetails = details;
