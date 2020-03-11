@@ -1,0 +1,4 @@
+# /etc/udev/rules.d/10-aditofsdk.rules
+#
+
+SUBSYSTEM=="i2c", DEVPATH=="*0-0056", RUN+="/bin/chown root:i2c /sys$env{DEVPATH}/eeprom", RUN+="/bin/chmod 0666 /sys$env{DEVPATH}/eeprom"
