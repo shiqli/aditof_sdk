@@ -189,6 +189,12 @@ aditof::Status Camera96Tof1::setMode(const std::string &mode,
         }
     }
 
+#if 1
+    uint16_t afeRegsAddr[5] = {0x4001, 0x7c22, 0xc3da, 0x4001, 0x7c22};
+    uint16_t afeRegsVal[5] = {0x0006, 0x0004, 0x03, 0x0007, 0x0004};
+    m_device->writeAfeRegisters(afeRegsAddr, afeRegsVal, 5);
+#endif
+
     m_details.mode = mode;
 
     return status;

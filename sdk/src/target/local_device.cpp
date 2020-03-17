@@ -276,6 +276,13 @@ LocalDevice::getAvailableFrameTypes(std::vector<aditof::FrameDetails> &types) {
     details.type = "depth_ir";
     types.push_back(details);
 
+    details.width = 640;
+    details.height = 480;
+    details.cal_data.offset = 0;
+    details.cal_data.gain = 1;
+    details.type = "raw";
+    types.push_back(details);
+
     details.width = 668;
     details.height = 750;
     details.cal_data.offset = 0;
@@ -471,8 +478,7 @@ aditof::Status LocalDevice::getFrame(uint16_t *buffer) {
         return status;
     }
 
-    unsigned int width;
-    unsigned int height;
+    unsigned int width, height;
     unsigned int buf_data_len;
     uint8_t *pdata;
 
@@ -483,75 +489,8 @@ aditof::Status LocalDevice::getFrame(uint16_t *buffer) {
     if (status != Status::OK) {
         return status;
     }
-
-    if ((width == 668)) {
-        unsigned int j = 0;
-        for (unsigned int i = 0; i < (buf_data_len); i += 3) {
-            if ((i != 0) && (i % (336 * 3) == 0)) {
-                j -= 4;
-            }
-
-            buffer[j] = (((unsigned short)*(pdata + i)) << 4) |
-                        (((unsigned short)*(pdata + i + 2)) & 0x000F);
-            j++;
-
-            buffer[j] = (((unsigned short)*(pdata + i + 1)) << 4) |
-                        ((((unsigned short)*(pdata + i + 2)) & 0x00F0) >> 4);
-            j++;
-        }
-    } else {
-        // clang-format off
-        uint16_t *depthPtr = buffer;
-        uint16_t *irPtr = buffer + (width * height) / 2;
-        unsigned int j = 0;
-
-        /* The frame is read from the device as an array of uint8_t's where
-         * every 3 uint8_t's can produce 2 uint16_t's that have only 12 bits
-         * in use.
-         * Ex: consider uint8_t a, b, c;
-         * We first convert a, b, c to uint16_t
-         * We obtain uint16_t f1 = (a << 4) | (c & 0x000F)
-         * and uint16_t f2 = (b << 4) | ((c & 0x00F0) >> 4);
-         */
-        for (unsigned int i = 0; i < (buf_data_len); i += 24) {
-            /* Read 24 bytes from pdata and deinterleave them in 3 separate 8 bytes packs
-             *                                   |-> a1 a2 a3 ... a8
-             * a1 b1 c1 a2 b2 c2 ... a8 b8 c8  ->|-> b1 b2 b3 ... b8
-             *                                   |-> c1 c2 c3 ... c8
-             * then convert all the values to uint16_t          
-             */
-            uint8x8x3_t data = vld3_u8(pdata);
-            uint16x8_t aData = vmovl_u8(data.val[0]);
-            uint16x8_t bData = vmovl_u8(data.val[1]);
-            uint16x8_t cData = vmovl_u8(data.val[2]);
-
-            uint16x8_t lowMask = vdupq_n_u16(0x000F);
-            uint16x8_t highMask = vdupq_n_u16(0x00F0);
-
-            /* aBuffer = (a << 4) | (c & 0x000F) for every a and c value*/
-            uint16x8_t aBuffer = vorrq_u16(vshlq_n_u16(aData, 4), vandq_u16(cData, lowMask));
-
-            /* bBuffer = (b << 4) | ((c & 0x00F0) >> 4) for every b and c value*/
-            uint16x8_t bBuffer = vorrq_u16(vshlq_n_u16(bData, 4), vshrq_n_u16(vandq_u16(cData, highMask), 4));
-
-            uint16x8x2_t toStore;
-            toStore.val[0] = aBuffer;
-            toStore.val[1] = bBuffer;
-
-            /* Store the 16 frame pixel in the corresponding image */
-            if ((j / width) % 2) {
-                vst2q_u16(irPtr, toStore);
-                irPtr += 16;
-            } else {
-                vst2q_u16(depthPtr, toStore);
-                depthPtr += 16;
-            }
-
-            j += 16;
-            pdata += 24;
-        }
-        // clang-format on
-    }
+	
+    memcpy(buffer, pdata, sizeof(uint16_t) * buf_data_len);
 
     status = enqueueInternalBuffer(buf);
     if (status != Status::OK) {
@@ -806,7 +745,7 @@ aditof::Status LocalDevice::getInternalBuffer(uint8_t **buffer,
 
     *buffer = static_cast<uint8_t *>(m_implData->videoBuffers[buf.index].start);
     buf_data_len = m_implData->frameDetails.width *
-                   m_implData->frameDetails.height * 3 / 2;
+                   m_implData->frameDetails.height;
 
     return aditof::Status::OK;
 }
